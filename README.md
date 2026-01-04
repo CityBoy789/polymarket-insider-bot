@@ -6,6 +6,8 @@ High-performance async bot that detects potential insider trading activity on Po
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
+PS. Code is 100% written by AI. I was supervising & prompting :)
+
 ## Features
 
 🚀 **Performance**
