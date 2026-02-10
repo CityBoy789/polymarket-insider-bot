@@ -7,9 +7,9 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from src.database import Database
-from src.logger import logger
-from src.slack_notifier import SlackNotifier
+from src.core.logger import logger
+from src.core.slack_notifier import SlackNotifier
+from src.database.database import Database
 
 console = Console()
 

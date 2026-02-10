@@ -5,7 +5,7 @@ from datetime import datetime
 
 import aiohttp
 
-from src.config import (
+from src.core.config import (
     BASE_DATA_API,
     CACHE_TTL,
     CLOB_API,
@@ -13,7 +13,7 @@ from src.config import (
     MAX_CONNECTIONS,
     REQUEST_RETRY_ATTEMPTS,
 )
-from src.logger import logger
+from src.core.logger import logger
 
 
 class PolymarketAPI:

@@ -1,6 +1,6 @@
 """Wallet tracking with SQLite backend"""
 
-from src.database import Database
+from src.database.database import Database
 
 
 class WalletTracker:

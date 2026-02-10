@@ -5,7 +5,7 @@ from datetime import datetime
 
 import aiosqlite
 
-from src.logger import logger
+from src.core.logger import logger
 
 
 class Database:
@@ -23,7 +23,11 @@ class Database:
                     last_seen REAL,
                     total_volume REAL DEFAULT 0,
                     total_trades INTEGER DEFAULT 0,
-                    unique_markets INTEGER DEFAULT 0
+                    unique_markets INTEGER DEFAULT 0,
+                    sharpe_ratio REAL DEFAULT 0,
+                    tier TEXT DEFAULT 'Bronze',
+                    max_drawdown REAL DEFAULT 0,
+                    win_rate REAL DEFAULT 0
                 )
             """)
 
@@ -67,7 +71,28 @@ class Database:
             await db.execute("CREATE INDEX IF NOT EXISTS idx_alert_wallet ON alerts(wallet)")
 
             await db.commit()
+            await self.migrate_db()
             logger.info("Database initialized")
+
+    async def migrate_db(self):
+        """Add missing columns if they don't exist"""
+        async with aiosqlite.connect(self.db_path) as db:
+            columns_to_add = {
+                "sharpe_ratio": "REAL DEFAULT 0",
+                "tier": "TEXT DEFAULT 'Bronze'",
+                "max_drawdown": "REAL DEFAULT 0",
+                "win_rate": "REAL DEFAULT 0",
+            }
+
+            cursor = await db.execute("PRAGMA table_info(wallets)")
+            existing_columns = [row[1] for row in await cursor.fetchall()]
+
+            for col, col_def in columns_to_add.items():
+                if col not in existing_columns:
+                    logger.info(f"Adding column {col} to wallets table")
+                    await db.execute(f"ALTER TABLE wallets ADD COLUMN {col} {col_def}")
+
+            await db.commit()
 
     async def register_trade(self, address: str, trade: dict):
         """Register a trade for a wallet"""
@@ -180,6 +205,10 @@ class Database:
                 "unique_markets": wallet["unique_markets"],
                 "avg_bet_size": avg_bet_size,
                 "max_market_concentration": max_concentration,
+                "sharpe_ratio": wallet["sharpe_ratio"],
+                "tier": wallet["tier"],
+                "max_drawdown": wallet["max_drawdown"],
+                "win_rate": wallet["win_rate"],
             }
 
     async def save_alert(self, alert: dict):

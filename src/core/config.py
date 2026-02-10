@@ -38,7 +38,7 @@ REQUEST_RETRY_ATTEMPTS = 3
 CACHE_TTL = 300
 
 # Database
-DATABASE_PATH = "polymarket_tracker.db"
+DATABASE_PATH = "data/polymarket_tracker.db"
 
 # Slack notifications
 SLACK_ENABLED = os.getenv("SLACK_ENABLED", "false").lower() == "true"

@@ -5,7 +5,7 @@ import logging
 from rich.console import Console
 from rich.logging import RichHandler
 
-from src.config import LOG_FILE, LOG_LEVEL
+from src.core.config import LOG_FILE, LOG_LEVEL
 
 console = Console()
 

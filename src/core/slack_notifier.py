@@ -2,8 +2,8 @@
 
 import aiohttp
 
-from src.config import SLACK_ENABLED, SLACK_WEBHOOK_URL
-from src.logger import logger
+from src.core.config import SLACK_ENABLED, SLACK_WEBHOOK_URL
+from src.core.logger import logger
 
 
 class SlackNotifier:

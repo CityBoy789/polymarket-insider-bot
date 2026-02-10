@@ -6,26 +6,26 @@ from rich.panel import Panel
 from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.table import Table
 
-from src.alert_system import AlertSystem
-from src.anomaly_detector import AnomalyDetector
-from src.config import (
+from src.core.alert_system import AlertSystem
+from src.core.config import (
     CONCURRENT_BATCH_SIZE,
     DATABASE_PATH,
     POLL_INTERVAL,
     SUSPICIOUS_SCORE_THRESHOLD,
     TRACKED_TAG_IDS,
 )
-from src.database import Database
-from src.logger import console, logger
-from src.polymarket_api import PolymarketAPI
-from src.wallet_tracker import WalletTracker
+from src.core.logger import console, logger
+from src.core.polymarket_api import PolymarketAPI
+from src.core.wallet_tracker import WalletTracker
+from src.database.database import Database
+from src.plugins.anomaly_detector_plugin import AnomalyDetectorPlugin
 
 
 class InsiderTracker:
     def __init__(self):
         self.db = Database(DATABASE_PATH)
         self.wallet_tracker = WalletTracker(self.db)
-        self.anomaly_detector = AnomalyDetector()
+        self.anomaly_detector = AnomalyDetectorPlugin()
         self.alert_system = AlertSystem(self.db)
         self.processed_trades = set()
         self.scan_stats = {
