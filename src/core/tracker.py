@@ -7,6 +7,7 @@ from rich.progress import BarColumn, Progress, SpinnerColumn, TextColumn, TimeEl
 from rich.table import Table
 
 from src.core.alert_system import AlertSystem
+from src.core.anomaly_detector import AnomalyDetector
 from src.core.config import (
     CONCURRENT_BATCH_SIZE,
     DATABASE_PATH,
@@ -18,14 +19,13 @@ from src.core.logger import console, logger
 from src.core.polymarket_api import PolymarketAPI
 from src.core.wallet_tracker import WalletTracker
 from src.database.database import Database
-from src.plugins.anomaly_detector_plugin import AnomalyDetectorPlugin
 
 
 class InsiderTracker:
     def __init__(self):
         self.db = Database(DATABASE_PATH)
         self.wallet_tracker = WalletTracker(self.db)
-        self.anomaly_detector = AnomalyDetectorPlugin()
+        self.anomaly_detector = AnomalyDetector()
         self.alert_system = AlertSystem(self.db)
         self.processed_trades = set()
         self.scan_stats = {
@@ -104,8 +104,10 @@ class InsiderTracker:
                 )
 
                 wallet_stats = await self.wallet_tracker.get_wallet_stats(wallet)
-                score, reasons = self.anomaly_detector.score_wallet_suspiciousness(
-                    wallet_stats, trade, market_stats
+                history = await self.db.get_wallet_history(wallet)
+
+                score, reasons = await self.anomaly_detector.calculate_score(
+                    wallet, history, wallet_stats, trade, market_stats
                 )
 
                 if score >= SUSPICIOUS_SCORE_THRESHOLD:

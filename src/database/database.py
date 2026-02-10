@@ -167,10 +167,8 @@ class Database:
                 return {}
 
             # Get trades
-            cursor = await db.execute(
-                "SELECT * FROM trades WHERE wallet_address = ? ORDER BY timestamp DESC", (address,)
-            )
-            await cursor.fetchall()
+            cursor = await db.execute("SELECT * FROM trades WHERE wallet_address = ?", (address,))
+            # trades = await cursor.fetchall()
 
             # Calculate stats
             age_days = (datetime.now().timestamp() - wallet["first_seen"]) / (24 * 3600)
@@ -210,6 +208,17 @@ class Database:
                 "max_drawdown": wallet["max_drawdown"],
                 "win_rate": wallet["win_rate"],
             }
+
+    async def get_wallet_history(self, address: str, limit: int = 50) -> list:
+        """Get raw trade history for a wallet"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM trades WHERE wallet_address = ? ORDER BY timestamp DESC LIMIT ?",
+                (address, limit),
+            )
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
 
     async def save_alert(self, alert: dict):
         """Save an alert to database"""
