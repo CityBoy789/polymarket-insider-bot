@@ -195,21 +195,19 @@ Mode: ASYNC + OPTIMIZED + SQLite
 polymarket-insider-bot/
 ├── src/                      # Source code
 │   ├── main.py              # CLI entry point
-│   ├── tracker.py           # Main tracking logic
-│   ├── database.py          # SQLite operations
-│   ├── polymarket_api.py    # API client
-│   ├── wallet_tracker.py    # Wallet behavior tracking
-│   ├── anomaly_detector.py  # Pattern detection
-│   ├── alert_system.py      # Alert management
-│   ├── slack_notifier.py    # Slack integration
-│   ├── logger.py            # Logging setup
-│   └── config.py            # Configuration
+│   ├── core/                # Core logic
+│   │   ├── tracker.py       # Market scanning
+│   │   ├── wallet_tracker.py # Wallet stats
+│   │   ├── anomaly_detector.py # Z-Score detection
+│   │   ├── alert_system.py  # Alerting
+│   │   └── config.py        # Config
+│   ├── database/            # SQLite
+│   └── validation/          # 🆕 QA Tools
+│       ├── manual_labeling.py
+│       └── detection_quality.py
 ├── run.py                    # Entry point script
 ├── requirements.txt          # Dependencies
-├── requirements-dev.txt      # Dev dependencies
-├── .env.example             # Config template
-├── pyproject.toml           # Ruff config
-└── README.md
+└── .env.example             # Config template
 ```
 
 ## Development
@@ -248,29 +246,7 @@ pytest tests/
 | `POLL_INTERVAL` | 60 | Seconds between scans |
 | `LOG_LEVEL` | INFO | Logging verbosity |
 
-## Performance Tips
 
-**Maximum Speed**
-```bash
-CONCURRENT_BATCH_SIZE=50
-MAX_CONNECTIONS=100
-POLL_INTERVAL=30
-```
-
-**More Sensitive Detection**
-```bash
-SUSPICIOUS_SCORE_THRESHOLD=5
-FRESH_WALLET_DAYS=14
-MIN_BET_SIZE=500
-```
-
-**Production Monitoring**
-Run in `tmux` or `screen` for 24/7 monitoring:
-```bash
-tmux new -s polymarket
-python run.py
-# Ctrl+B, D to detach
-```
 
 ## Data Storage
 
@@ -311,7 +287,30 @@ This tool is for educational and research purposes. Trading cryptocurrencies and
 
 MIT License - see [LICENSE](LICENSE) file
 
+
+
+## 🛡️ Validation & Quality Assurance
+
+We prioritize **Detection Quality** (Precision/Recall) over hypothetical trading ROI.
+
+### Verification Tools
+
+1.  **Manual Labeling Tool** (`src/validation/manual_labeling.py`):
+    *   Interactively review alerts.
+    *   Label them as `True Positive` (Insider) or `False Positive`.
+    *   Builds a ground truth dataset for the statistical model.
+
+2.  **Quality Metrics** (`src/validation/detection_quality.py`):
+    *   Calculates **Precision** ( % of alerts that are real).
+    *   Target: > 60% Precision.
+
+### Statistical Baseline
+The `AnomalyDetector` uses a Z-Score model to flag outliers:
+*   **Age Z-Score**: Is the wallet significantly younger than average?
+*   **Volume Z-Score**: Is the trade size statistically anomalous?
+
 ## Acknowledgments
+
 
 - Built for the Polymarket community
 - Inspired by on-chain analysis techniques

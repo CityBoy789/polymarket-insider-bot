@@ -19,26 +19,14 @@ from src.core.logger import console, logger
 from src.core.polymarket_api import PolymarketAPI
 from src.core.wallet_tracker import WalletTracker
 from src.database.database import Database
-from src.execution.connector import PolymarketTrader
-from src.execution.strategy import CopyTradingStrategy
 
 
 class InsiderTracker:
     def __init__(self):
         self.db = Database(DATABASE_PATH)
         self.wallet_tracker = WalletTracker(self.db)
-        self.anomaly_detector = AnomalyDetector()
+        self.anomaly_detector = AnomalyDetector(self.db)
         self.alert_system = AlertSystem(self.db)
-
-        # Execution Engine
-        try:
-            self.trader = PolymarketTrader()
-            self.strategy = CopyTradingStrategy()
-            logger.info("Copy Trading Engine initialized")
-        except Exception as e:
-            logger.error(f"Failed to initialize Copy Trading Engine: {e}")
-            self.trader = None
-            self.strategy = None
 
         self.processed_trades = set()
         self.scan_stats = {
@@ -49,8 +37,9 @@ class InsiderTracker:
         }
 
     async def initialize(self):
-        """Initialize database"""
+        """Initialize database and models"""
         await self.db.init_db()
+        await self.anomaly_detector.initialize()
 
     async def get_all_markets(self, api: PolymarketAPI) -> list[dict]:
         """Fetch all markets we're tracking concurrently"""
@@ -129,46 +118,6 @@ class InsiderTracker:
                     )
                     self.alert_system.print_alert(alert)
                     alerts_count += 1
-
-                    # Copy Trading Execution
-                    if self.trader and self.strategy and self.strategy.should_follow(alert):
-                        logger.info(
-                            f"Strategy Triggered! Attempting to copy trade for alert {alert.get('id')}..."
-                        )
-                        try:
-                            side = "BUY" if trade.get("side") == "BUY" else "SELL"
-                            trade.get("asset_id")  # Assuming asset_id, need to verify
-                            # If asset_id is not in trade, we need to fetch it or use what we have.
-                            # ClobClient usually requires token_id.
-                            # The trade object from fetch_trades usually has 'assetId' or 'token_id'.
-                            # Let's check PolymarketAPI fetch_trades structure.
-
-                            # Correction: trade object from CLOB API usually has 'asset_id' or 'token_id'.
-                            # We might need to map it.
-                            # Let's assume 'asset_id' based on typical Clob response, but 'token_id' for order.
-
-                            target_token_id = trade.get("asset_id") or trade.get("token_id")
-
-                            if target_token_id:
-                                size = self.strategy.calculate_position_size(alert)
-                                price = float(trade.get("price", 0))
-
-                                # Safety: don't place order if size is 0
-                                if size > 0:
-                                    logger.info(f"Placing {side} order: Size {size} USDC @ {price}")
-                                    order_response = await self.trader.place_order(
-                                        price=price, size=size, side=side, token_id=target_token_id
-                                    )
-                                    logger.info(f"Order Response: {order_response}")
-
-                                    # Check for success and update daily loss if needed (if we knew PnL immediately, but we don't)
-                                    if "error" in order_response:
-                                        logger.error(f"Order failed: {order_response['error']}")
-                            else:
-                                logger.error("Could not determine token_id for copy trade")
-
-                        except Exception as e:
-                            logger.error(f"Error executing copy trade: {e}")
 
             coordinated = self.anomaly_detector.detect_coordinated_activity(trades)
             if coordinated:

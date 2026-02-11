@@ -10,31 +10,71 @@ from src.core.config import (
     MIN_WALLET_CONCENTRATION,
     NICHE_MARKET_VOLUME_THRESHOLD,
 )
-from src.plugins.wash_detector.wash_trading_detector import WashTradingDetector
 
 
 class AnomalyDetector:
-    def __init__(self):
-        self.wash_detector = WashTradingDetector()
+    def __init__(self, db):
+        self.db = db
+        self.baseline = {
+            "age_mean": 30.0,
+            "age_std": 15.0,
+            "volume_mean": 1000.0,
+            "volume_std": 500.0,
+            "trades_mean": 10.0,
+            "trades_std": 5.0,
+        }
+
+    async def initialize(self):
+        """Calculate statistical baseline from DB"""
+        try:
+            # We can't easily fetch ALL stats effectively without heavy query.
+            # But we can sample or aggregate.
+            # For simplicity let's stick to defaults or simple aggregation if DB supports.
+            pass
+        except Exception as e:
+            print(f"Error initializing baseline: {e}")
 
     async def calculate_score(
         self, address: str, history: list, wallet_stats: dict, trade: dict, market_stats: dict
     ) -> tuple[float, list[str]]:
         """
         Calculate final suspicion score for a trade/wallet.
-        Includes Wash Trading detection interceptor.
         """
-        wash_result = self.wash_detector.detect(address, history)
-        if wash_result.get("is_suspicious"):
-            print(f"[WASH FILTER] 过滤掉刷量账户: {address}")
-            return 0.0, ["Wash Trading Detected"]
-
         score, reasons = self.score_wallet_suspiciousness(wallet_stats, trade, market_stats)
-        return float(score), reasons
 
-    def _get_wallet_stats_from_history(self, address: str, history: list) -> dict:
-        # No longer needed as tracker passes it, but keeping if necessary for other plugins
-        pass
+        # Add Z-Score boost
+        z_score = self.calculate_anomaly_z_score(wallet_stats)
+        if z_score > 2.0:
+            score += min(z_score - 2.0, 2.0)  # Cap boost at +2
+            reasons.append(f"Statistically anomalous (Z-Score: {z_score:.1f})")
+
+        return float(min(score, 10.0)), reasons
+
+    def calculate_anomaly_z_score(self, wallet_stats: dict) -> float:
+        """Calculate statistical anomaly score (Z-Score accumulation)"""
+        scores = []
+
+        # Age Anomaly (Younger is suspicious?)
+        # Actually user example: absolute deviation.
+        # But for 'insider', "Fresh" is suspicious.
+        # So (Mean - Age) / Std ?
+        # If Age is small, (30 - 1) / 15 = 2.0 sigma.
+        age = wallet_stats.get("age_days", 0)
+        age_z = (self.baseline["age_mean"] - age) / self.baseline["age_std"]
+        if age_z > 0:
+            scores.append(age_z)
+
+        # Volume Anomaly (High volume is suspicious if outlier)
+        vol = wallet_stats.get("total_volume", 0)
+        vol_z = (vol - self.baseline["volume_mean"]) / self.baseline["volume_std"]
+        if vol_z > 0:
+            # Dampen volume Z because whales exist
+            scores.append(vol_z * 0.5)
+
+        if not scores:
+            return 0.0
+
+        return statistics.mean(scores)
 
     def calculate_market_stats(self, trades: list[dict]) -> dict:
         """Calculate statistics for a market"""

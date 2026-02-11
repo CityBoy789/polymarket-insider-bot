@@ -47,11 +47,3 @@ SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL", "")
 # Logging
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 LOG_FILE = "tracker.log"
-
-# Copy Trading settings
-COPY_TRADING_ENABLED = os.getenv("COPY_TRADING_ENABLED", "false").lower() == "true"
-SIMULATION_MODE = os.getenv("SIMULATION_MODE", "true").lower() == "true"
-STRATEGY_MIN_SCORE = float(os.getenv("STRATEGY_MIN_SCORE", "8.5"))
-STRATEGY_MIN_WIN_RATE = float(os.getenv("STRATEGY_MIN_WIN_RATE", "0.6"))
-MAX_BET_AMOUNT = float(os.getenv("MAX_BET_AMOUNT", "50.0"))
-DAILY_LOSS_LIMIT = float(os.getenv("DAILY_LOSS_LIMIT", "500.0"))

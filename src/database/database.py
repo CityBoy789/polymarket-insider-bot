@@ -23,11 +23,7 @@ class Database:
                     last_seen REAL,
                     total_volume REAL DEFAULT 0,
                     total_trades INTEGER DEFAULT 0,
-                    unique_markets INTEGER DEFAULT 0,
-                    sharpe_ratio REAL DEFAULT 0,
-                    tier TEXT DEFAULT 'Bronze',
-                    max_drawdown REAL DEFAULT 0,
-                    win_rate REAL DEFAULT 0
+                    unique_markets INTEGER DEFAULT 0
                 )
             """)
 
@@ -59,7 +55,8 @@ class Database:
                     suspicion_score REAL,
                     reasons TEXT,
                     wallet_stats TEXT,
-                    current_price TEXT
+                    current_price TEXT,
+                    label TEXT DEFAULT NULL
                 )
             """)
 
@@ -77,20 +74,12 @@ class Database:
     async def migrate_db(self):
         """Add missing columns if they don't exist"""
         async with aiosqlite.connect(self.db_path) as db:
-            columns_to_add = {
-                "sharpe_ratio": "REAL DEFAULT 0",
-                "tier": "TEXT DEFAULT 'Bronze'",
-                "max_drawdown": "REAL DEFAULT 0",
-                "win_rate": "REAL DEFAULT 0",
-            }
-
-            cursor = await db.execute("PRAGMA table_info(wallets)")
-            existing_columns = [row[1] for row in await cursor.fetchall()]
-
-            for col, col_def in columns_to_add.items():
-                if col not in existing_columns:
-                    logger.info(f"Adding column {col} to wallets table")
-                    await db.execute(f"ALTER TABLE wallets ADD COLUMN {col} {col_def}")
+            # Check for label column in alerts
+            cursor = await db.execute("PRAGMA table_info(alerts)")
+            columns = [row[1] for row in await cursor.fetchall()]
+            if "label" not in columns:
+                logger.info("Adding label column to alerts table")
+                await db.execute("ALTER TABLE alerts ADD COLUMN label TEXT DEFAULT NULL")
 
             await db.commit()
 
@@ -203,10 +192,6 @@ class Database:
                 "unique_markets": wallet["unique_markets"],
                 "avg_bet_size": avg_bet_size,
                 "max_market_concentration": max_concentration,
-                "sharpe_ratio": wallet["sharpe_ratio"],
-                "tier": wallet["tier"],
-                "max_drawdown": wallet["max_drawdown"],
-                "win_rate": wallet["win_rate"],
             }
 
     async def get_wallet_history(self, address: str, limit: int = 50) -> list:
@@ -314,3 +299,39 @@ class Database:
                 "most_flagged_wallet": most_flagged,
                 "recent_24h": len(recent),
             }
+
+    async def update_alert_label(self, alert_id: int, label: str):
+        """Update the label for an alert (insider/not_insider/unsure)"""
+        async with aiosqlite.connect(self.db_path) as db:
+            await db.execute("UPDATE alerts SET label = ? WHERE id = ?", (label, alert_id))
+            await db.commit()
+
+    async def get_labeled_alerts(self) -> list[dict]:
+        """Get all alerts that have been manually labeled"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute("SELECT * FROM alerts WHERE label IS NOT NULL")
+            rows = await cursor.fetchall()
+            return [dict(row) for row in rows]
+
+    async def get_unlabeled_alerts(self, limit: int = 50) -> list[dict]:
+        """Get alerts that haven't been labeled yet"""
+        async with aiosqlite.connect(self.db_path) as db:
+            db.row_factory = aiosqlite.Row
+            cursor = await db.execute(
+                "SELECT * FROM alerts WHERE label IS NULL ORDER BY suspicion_score DESC LIMIT ?",
+                (limit,),
+            )
+            rows = await cursor.fetchall()
+            # Need to parse JSON fields for consistency usage
+            results = []
+            for row in rows:
+                r = dict(row)
+                for field in ["trade_data", "reasons", "wallet_stats"]:
+                    if isinstance(r.get(field), str):
+                        try:
+                            r[field] = json.loads(r[field])
+                        except Exception:
+                            pass
+                results.append(r)
+            return results
