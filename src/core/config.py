@@ -16,6 +16,10 @@ CLOB_API = "https://clob.polymarket.com"
 # Tracking parameters
 TRACKED_TAG_IDS = [
     2,  # Politics
+    4,  # Crypto
+    6,  # Economics
+    10, # Sports,
+    3,  # AI
 ]
 
 # Insider detection thresholds
