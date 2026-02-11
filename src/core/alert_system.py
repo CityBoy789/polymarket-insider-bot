@@ -1,4 +1,4 @@
-"""Alert system with SQLite and Slack integration"""
+"""Alert system with SQLite, Slack, and Telegram integration"""
 
 from datetime import datetime
 
@@ -9,6 +9,7 @@ from rich.text import Text
 
 from src.core.logger import logger
 from src.core.slack_notifier import SlackNotifier
+from src.core.telegram_notifier import TelegramNotifier
 from src.database.database import Database
 
 console = Console()
@@ -18,6 +19,7 @@ class AlertSystem:
     def __init__(self, db: Database):
         self.db = db
         self.slack = SlackNotifier()
+        self.telegram = TelegramNotifier()
 
     async def create_alert(
         self,
@@ -54,6 +56,7 @@ class AlertSystem:
 
         await self.db.save_alert(alert)
         await self.slack.send_alert(alert)
+        await self.telegram.send_alert(alert)
         logger.info(f"Alert created: {wallet[:10]}... score {score:.1f}/10")
         return alert
 

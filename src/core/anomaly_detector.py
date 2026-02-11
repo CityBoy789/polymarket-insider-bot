@@ -10,6 +10,7 @@ from src.core.config import (
     MIN_WALLET_CONCENTRATION,
     NICHE_MARKET_VOLUME_THRESHOLD,
 )
+from src.core.logger import logger
 
 
 class AnomalyDetector:
@@ -27,12 +28,31 @@ class AnomalyDetector:
     async def initialize(self):
         """Calculate statistical baseline from DB"""
         try:
-            # We can't easily fetch ALL stats effectively without heavy query.
-            # But we can sample or aggregate.
-            # For simplicity let's stick to defaults or simple aggregation if DB supports.
-            pass
+            stats = await self.db.get_baseline_stats()
+            if stats and stats.get("wallet_count", 0) >= 10:
+                self.baseline["age_mean"] = stats.get("age_mean", self.baseline["age_mean"])
+                self.baseline["age_std"] = max(stats.get("age_std", self.baseline["age_std"]), 1.0)
+                self.baseline["volume_mean"] = stats.get(
+                    "volume_mean", self.baseline["volume_mean"]
+                )
+                self.baseline["volume_std"] = max(
+                    stats.get("volume_std", self.baseline["volume_std"]), 1.0
+                )
+                self.baseline["trades_mean"] = stats.get(
+                    "trades_mean", self.baseline["trades_mean"]
+                )
+                self.baseline["trades_std"] = max(
+                    stats.get("trades_std", self.baseline["trades_std"]), 1.0
+                )
+                logger.info(
+                    f"Baseline initialized from {stats['wallet_count']} wallets: "
+                    f"age={self.baseline['age_mean']:.1f}±{self.baseline['age_std']:.1f}, "
+                    f"vol={self.baseline['volume_mean']:.0f}±{self.baseline['volume_std']:.0f}"
+                )
+            else:
+                logger.info("Not enough wallet data for baseline, using defaults")
         except Exception as e:
-            print(f"Error initializing baseline: {e}")
+            logger.warning(f"Error initializing baseline, using defaults: {e}")
 
     async def calculate_score(
         self, address: str, history: list, wallet_stats: dict, trade: dict, market_stats: dict

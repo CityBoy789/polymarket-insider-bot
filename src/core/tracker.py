@@ -41,6 +41,11 @@ class InsiderTracker:
         await self.db.init_db()
         await self.anomaly_detector.initialize()
 
+    async def close(self):
+        """Clean up resources (database connection, etc.)"""
+        await self.db.close()
+        logger.debug("Tracker resources cleaned up")
+
     async def get_all_markets(self, api: PolymarketAPI) -> list[dict]:
         """Fetch all markets we're tracking concurrently"""
 
