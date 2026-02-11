@@ -4,7 +4,13 @@ import os
 from typing import Any
 
 from py_clob_client.client import ClobClient
-from py_clob_client.clob_types import ApiCreds, AssetType, BalanceAllowanceParams
+from py_clob_client.clob_types import (
+    ApiCreds,
+    AssetType,
+    BalanceAllowanceParams,
+    OrderArgs,
+)
+from py_clob_client.exceptions import PolyApiException
 
 
 class PolymarketTrader:
@@ -64,6 +70,64 @@ class PolymarketTrader:
             else:
                 print(f"Error checking balance: {e}")
             return {}
+
+    async def place_order(
+        self, price: float, size: float, side: str, token_id: str
+    ) -> dict[str, Any]:
+        """
+        Place an order on the CLOB.
+
+        Args:
+            price (float): Price of the order.
+            size (float): Size of the order.
+            side (str): Side of the order (BUY or SELL).
+            token_id (str): Token ID of the asset.
+
+        Returns:
+            Dict[str, Any]: The order response.
+        """
+        try:
+            from src.core.config import SIMULATION_MODE
+
+            if SIMULATION_MODE:
+                print(
+                    f"[SIMULATION] Simulate placing {side} order: {size} @ {price} (Token: {token_id})"
+                )
+                return {
+                    "simulation": True,
+                    "orderID": f"sim_{token_id[:10]}",
+                    "status": "filled",
+                    "size": size,
+                    "price": price,
+                }
+
+            order_args = OrderArgs(price=price, size=size, side=side, token_id=token_id)
+            return await asyncio.to_thread(self.client.create_order, order_args)
+        except PolyApiException as e:
+            print(f"Polymarket API Error placing order: {e}")
+            return {"error": str(e)}
+        except Exception as e:
+            print(f"Error placing order: {e}")
+            return {"error": str(e)}
+
+    async def cancel_order(self, order_id: str) -> dict[str, Any]:
+        """
+        Cancel an order on the CLOB.
+
+        Args:
+            order_id (str): The ID of the order to cancel.
+
+        Returns:
+            Dict[str, Any]: The cancel response.
+        """
+        try:
+            return await asyncio.to_thread(self.client.cancel, order_id)
+        except PolyApiException as e:
+            print(f"Polymarket API Error cancelling order: {e}")
+            return {"error": str(e)}
+        except Exception as e:
+            print(f"Error cancelling order: {e}")
+            return {"error": str(e)}
 
 
 if __name__ == "__main__":
