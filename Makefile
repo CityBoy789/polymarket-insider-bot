@@ -1,4 +1,4 @@
-.PHONY: help install install-dev run scan stats clean lint format test
+.PHONY: help install install-dev run scan stats clean lint format test restart stop status
 
 help:
 	@echo "Polymarket Insider Tracker - Available Commands:"
@@ -8,6 +8,9 @@ help:
 	@echo "  make run          - Run continuous monitoring"
 	@echo "  make scan         - Run single scan"
 	@echo "  make stats        - View statistics"
+	@echo "  make restart      - Restart tracker in background"
+	@echo "  make stop         - Stop background tracker"
+	@echo "  make status       - Check tracker status"
 	@echo "  make lint         - Check code with ruff"
 	@echo "  make format       - Format code with ruff"
 	@echo "  make clean        - Remove cache and build files"
@@ -45,4 +48,13 @@ clean:
 
 test:
 	pytest tests/ -v
+
+restart:
+	bash restart.sh
+
+stop:
+	bash stop.sh
+
+status:
+	bash status.sh
 
